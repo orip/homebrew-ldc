@@ -1,8 +1,8 @@
 class LdcWeka < Formula
   desc "Portable D programming language compiler - fork for Weka.IO"
   homepage "https://wiki.dlang.org/LDC"
-  url "https://github.com/weka/ldc.git", tag: "v1.24.0-weka3", revision: "53bad14845f2aab47a67908377c11ac5d93de72e"
-  version "1.24.0-weka3.1"
+  url "https://github.com/weka/ldc.git", tag: "v1.24.0-weka6", revision: "96077a91de56fc32004c1215a893a4620a1cb634"
+  version "1.24.0-weka6"
   license "BSD-3-Clause"
   head "https://github.com/weka-io/ldc.git", :shallow => false, :branch => "weka-master"
 
@@ -14,11 +14,11 @@ class LdcWeka < Formula
     strategy :github_latest
   end
 
-  bottle do
-    root_url "https://github.com/weka/ldc/releases/download/v1.24.0-weka3"
-    sha256 big_sur: "7c6f1bd6463b70e925a6ed19378fb6fc0789b5b6220cc72305db89c78888f768"
-    sha256 arm64_big_sur: "3165ee960954f5b198e31c63c67025ec46fd98c43d7d782117adecd77ffa3a4b"
-  end
+  # bottle do
+  #   root_url "https://github.com/weka/ldc/releases/download/v1.24.0-weka6"
+  #   sha256 big_sur: "7c6f1bd6463b70e925a6ed19378fb6fc0789b5b6220cc72305db89c78888f768"
+  #   sha256 arm64_big_sur: "3165ee960954f5b198e31c63c67025ec46fd98c43d7d782117adecd77ffa3a4b"
+  # end
 
   depends_on "cmake" => :build
   depends_on "libconfig" => :build
@@ -44,6 +44,11 @@ class LdcWeka < Formula
     end
   end
 
+  # mimalloc currently disabled: causes build errors
+  # resource "mimalloc" do
+  #   url "https://github.com/microsoft/mimalloc/archive/refs/tags/v1.7.1.tar.gz"
+  #   sha256 "f4d9bf1dff83ca951f14340b725cc5ac120fc1e4d25a0ceed0b499aa52cdda81"
+  # end
 
   # Add support for building against LLVM 11.1
   # This is already merged upstream via https://github.com/ldc-developers/druntime/pull/195
@@ -54,6 +59,17 @@ class LdcWeka < Formula
     ENV.cxx11
     (buildpath/"ldc-bootstrap").install resource("ldc-bootstrap")
 
+    # mimalloc currently disabled: causes build errors
+    # (buildpath/"mimalloc").install resource("mimalloc")
+    # mimalloc_install_path = "#{buildpath}/inst_mimalloc"
+    # cd "mimalloc" do
+    #   mkdir "build" do
+    #     system "cmake", "..", *std_cmake_args, "-DCMAKE_INSTALL_PREFIX=#{mimalloc_install_path}"
+    #     system "make"
+    #     system "make", "install"
+    #   end
+    # end
+
     profdata_path = "#{buildpath}/instr_profiles/weka1.24-10nov2020.profdata"
     dmd_with_pgo = "#{buildpath}/ldc-bootstrap/bin/ldmd2 -fprofile-instr-use=#{profdata_path}"
     mkdir "build" do
@@ -62,6 +78,8 @@ class LdcWeka < Formula
         -DINCLUDE_INSTALL_DIR=#{include}/dlang/ldc
         -DD_COMPILER=#{dmd_with_pgo}
       ]
+      # mimalloc currently disabled: causes build errors
+      #-DALTERNATIVE_MALLOC_O=#{mimalloc_install_path}/lib/mimalloc-1.7/mimalloc.o
 
       system "cmake", "..", *args
       system "make"
@@ -103,14 +121,3 @@ __END__
  else static assert(false, "LDC LLVM version not supported");
  
  enum LLVM_atleast(int major) = (LLVM_version >= major * 100);
---- a/driver/timetrace.d
-+++ b/driver/timetrace.d
-@@ -136,7 +136,7 @@ struct TimeTraceProfiler
-     // timeBegin / time_scale = time in microseconds
-     static if (is(typeof(&QueryPerformanceFrequency)))
-     {
--        uint time_scale = 1_000;
-+        timer_t time_scale = 1_000;
-     } else {
-         enum time_scale = 1_000;
-     }
