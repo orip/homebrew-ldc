@@ -2,7 +2,7 @@ class LdcWeka < Formula
   desc "Portable D programming language compiler - fork for Weka.IO"
   homepage "https://wiki.dlang.org/LDC"
   url "https://github.com/weka/ldc.git", tag: "v1.24.0-weka6", revision: "96077a91de56fc32004c1215a893a4620a1cb634"
-  version "1.24.0-weka6"
+  version "1.24.0-weka6.1"
   license "BSD-3-Clause"
   head "https://github.com/weka-io/ldc.git", :shallow => false, :branch => "weka-master"
 
@@ -44,11 +44,10 @@ class LdcWeka < Formula
     end
   end
 
-  # mimalloc currently disabled: causes build errors
-  # resource "mimalloc" do
-  #   url "https://github.com/microsoft/mimalloc/archive/refs/tags/v1.7.1.tar.gz"
-  #   sha256 "f4d9bf1dff83ca951f14340b725cc5ac120fc1e4d25a0ceed0b499aa52cdda81"
-  # end
+  resource "mimalloc" do
+    url "https://github.com/microsoft/mimalloc/archive/refs/tags/v1.7.2.tar.gz"
+    sha256 "b1912e354565a4b698410f7583c0f83934a6dbb3ade54ab7ddcb1569320936bd"
+  end
 
   # Add support for building against LLVM 11.1
   # This is already merged upstream via https://github.com/ldc-developers/druntime/pull/195
@@ -59,16 +58,15 @@ class LdcWeka < Formula
     ENV.cxx11
     (buildpath/"ldc-bootstrap").install resource("ldc-bootstrap")
 
-    # mimalloc currently disabled: causes build errors
-    # (buildpath/"mimalloc").install resource("mimalloc")
-    # mimalloc_install_path = "#{buildpath}/inst_mimalloc"
-    # cd "mimalloc" do
-    #   mkdir "build" do
-    #     system "cmake", "..", *std_cmake_args, "-DCMAKE_INSTALL_PREFIX=#{mimalloc_install_path}"
-    #     system "make"
-    #     system "make", "install"
-    #   end
-    # end
+    (buildpath/"mimalloc").install resource("mimalloc")
+    mimalloc_install_path = "#{buildpath}/inst_mimalloc"
+    cd "mimalloc" do
+      mkdir "build" do
+        system "cmake", "..", *std_cmake_args, "-DMI_OSX_ZONE=ON", "-DCMAKE_INSTALL_PREFIX=#{mimalloc_install_path}"
+        system "make"
+        system "make", "install"
+      end
+    end
 
     profdata_path = "#{buildpath}/instr_profiles/weka1.24-10nov2020.profdata"
     dmd_with_pgo = "#{buildpath}/ldc-bootstrap/bin/ldmd2 -fprofile-instr-use=#{profdata_path}"
@@ -77,9 +75,8 @@ class LdcWeka < Formula
         -DLLVM_ROOT_DIR=#{Formula["llvm@11"].opt_prefix}
         -DINCLUDE_INSTALL_DIR=#{include}/dlang/ldc
         -DD_COMPILER=#{dmd_with_pgo}
+        -DALTERNATIVE_MALLOC_O=#{mimalloc_install_path}/lib/mimalloc-1.7/mimalloc.o
       ]
-      # mimalloc currently disabled: causes build errors
-      #-DALTERNATIVE_MALLOC_O=#{mimalloc_install_path}/lib/mimalloc-1.7/mimalloc.o
 
       system "cmake", "..", *args
       system "make"
